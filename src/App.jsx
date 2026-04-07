@@ -1,129 +1,117 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
-function App() {
+export default function App() {
   const [url, setUrl] = useState('');
-  const [steps, setSteps] = useState([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const scrollRef = useRef(null);
+  const [ms, setMs] = useState(0); 
+  const [isRunning, setIsRunning] = useState(false);
+  const [activeTask, setActiveTask] = useState(null);
+  const [logs, setLogs] = useState([]);
 
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [steps]);
+  const pipeline = [
+    { time: 600,  layer: "SYSTEM", action: "KERNEL_SOCKET_INIT", ip: "192.168.1.45", ttl: "64", ssl: "WAITING", mac: "00:E0:4C:68", detail: "Allocating TCP/IP buffers and initializing physical interface descriptors.", color: "#3b82f6" },
+    { time: 1600, layer: "NETWORK", action: "DNS_RESOLUTION", ip: "8.8.4.4", ttl: "54", ssl: "UDP_SECURE", mac: "GATEWAY_DEFAULT", detail: "Resolving host via Google DNS. TTL indicates 10 network hops to target.", color: "#2563eb" },
+    { time: 2600, layer: "TRANSPORT", action: "TCP_HANDSHAKE", ip: "142.251.40.174", ttl: "128", ssl: "TCP_SYN", mac: "NODE_REMOTE_01", detail: "Synchronizing sequence numbers. Establishing bi-directional flow control.", color: "#1d4ed8" },
+    { time: 3600, layer: "SECURITY", action: "SSL_CERT_VALIDATE", ip: "142.251.40.174", ttl: "128", ssl: "TLS_1.3_X25519", mac: "SHA256_VERIFIED", detail: "Handshaking encryption keys. Cipher Suite: AES_256_GCM_SHA384.", color: "#7c3aed" },
+    { time: 4600, layer: "SESSION", action: "HTTP_STREAMING", ip: "INBOUND_STREAM", ttl: "52", ssl: "TLS_ACTIVE", mac: "PKT_CAPTURE_ON", detail: "Receiving raw binary frames. Parsing HTTP/2 pseudo-headers and payload.", color: "#059669" },
+    { time: 5600, layer: "ENGINE", action: "DOM_PARSING", ip: "V8_HEAP_ACTIVE", ttl: "N/A", ssl: "N/A", mac: "DOM_TREE_GEN", detail: "Converting byte stream into memory-resident Node objects and Tree structure.", color: "#d97706" },
+    { time: 6600, layer: "GRAPHICS", action: "GPU_COMPOSITING", ip: "VRAM_BUFFER", ttl: "N/A", ssl: "VSYNC_READY", mac: "RASTER_THREAD", detail: "Merging layers on hardware. Committing final frame to front display buffer.", color: "#0891b2" }
+  ];
 
-  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-  const handleAnalyze = async () => {
-    if (!url) return;
-    const cleanUrl = url.replace(/^(https?:\/\/)/, '').split('/')[0];
-    setIsAnalyzing(true);
-    setSteps([]);
-    setProgress(0);
-
-    try {
-      // 1. DNS Resolution - تفاصيل السجل والـ IP
-      setSteps([{ id: 1, title: "DNS Lookup Phase", desc: `Querying Root/TLD servers for ${cleanUrl}...`, status: 'loading' }]);
-      setProgress(20);
-      const res = await fetch(`https://dns.google/resolve?name=${cleanUrl}`);
-      const data = await res.json();
-      await wait(1000);
-      if (data.Answer) {
-        const ip = data.Answer[0].data;
-        const ttl = data.Answer[0].TTL;
-        setSteps(prev => prev.map(s => s.id === 1 ? { ...s, status: 'success', desc: `Found IP: ${ip} | TTL: ${ttl}ms | Record Type: A` } : s));
-      } else { throw new Error(); }
-
-      // 2. TCP Handshake - تفاصيل الاتصال الثلاثي
-      setProgress(40);
-      setSteps(prev => [...prev, { id: 2, title: "TCP Connection (Layer 4)", desc: "Initiating 3-Way Handshake...", status: 'loading' }]);
-      await wait(800);
-      setSteps(prev => prev.map(s => s.id === 2 ? { ...s, status: 'success', desc: "SYN sent -> SYN-ACK received -> ACK sent. Connection Established on Port 443." } : s));
-
-      // 3. TLS Handshake - تفاصيل التشفير
-      setProgress(60);
-      setSteps(prev => [...prev, { id: 3, title: "SSL/TLS Security Layer", desc: "Exchanging Client/Server Hello...", status: 'loading' }]);
-      await wait(1000);
-      setSteps(prev => prev.map(s => s.id === 3 ? { ...s, status: 'success', desc: "Cipher Suite: TLS_AES_256_GCM_SHA384 | Certificate: Verified." } : s));
-
-      // 4. HTTP Request/Response - تفاصيل الـ Headers
-      setProgress(80);
-      setSteps(prev => [...prev, { id: 4, title: "HTTP Lifecycle", desc: "Sending GET / HTTP/2 Request...", status: 'loading' }]);
-      await wait(1000);
-      setSteps(prev => prev.map(s => s.id === 4 ? { ...s, status: 'success', desc: "Status: 200 OK | Protocol: H2 | Encoding: gzip | Keep-Alive: true" } : s));
-
-      // 5. Critical Rendering Path - تفاصيل المعالجة الداخلية
-      setProgress(95);
-      setSteps(prev => [...prev, { id: 5, title: "Critical Rendering Path", desc: "Parsing HTML & CSSOM...", status: 'loading' }]);
-      await wait(1200);
-      const domNodes = Math.floor(Math.random() * 400) + 150;
-      setSteps(prev => prev.map(s => s.id === 5 ? { ...s, status: 'success', desc: `DOM Tree: ${domNodes} nodes created | Layout: Reflow complete | Paint: Rasterized pixels.` } : s));
-
-      setProgress(100);
-    } catch (e) {
-      setSteps(prev => [...prev, { id: 99, title: "Error", desc: "Invalid URL or Network Issue.", status: 'error' }]);
-    } finally {
-      setIsAnalyzing(false);
-    }
+  const startAnalysis = () => {
+    if (!url || isRunning) return;
+    setIsRunning(true); setMs(0); setLogs([]); setActiveTask(null);
+    let start = null;
+    const animate = (now) => {
+      if (!start) start = now;
+      const progress = now - start;
+      if (progress <= 7000) {
+        setMs(progress);
+        const task = [...pipeline].reverse().find(e => progress >= e.time);
+        if (task && activeTask?.action !== task.action) {
+          setActiveTask(task);
+          setLogs(prev => [task, ...prev]);
+        }
+        requestAnimationFrame(animate);
+      } else { setIsRunning(false); }
+    };
+    requestAnimationFrame(animate);
   };
 
+  const onKey = (e) => { if (e.key === 'Enter') startAnalysis(); };
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Browser Architecture Emulator</h2>
-        <div style={styles.searchBar}>
+    <div style={{ backgroundColor: '#fcfcfc', minHeight: '100vh', padding: '40px', fontFamily: '"Segoe UI", Roboto, sans-serif', color: '#1a1a1a' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #eee', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.03)' }}>
+        
+        {/* URL Input Bar */}
+        <div style={{ padding: '25px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', marginRight: '10px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e5e7eb' }}></div>
+            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e5e7eb' }}></div>
+          </div>
           <input 
-            type="text" 
-            placeholder="google.com" 
-            value={url} 
-            onChange={e => setUrl(e.target.value)} 
-            style={styles.input}
+            style={{ flex: 1, padding: '14px 20px', borderRadius: '10px', border: '1px solid #eee', background: '#f9fafb', fontSize: '14px', outline: 'none', transition: 'all 0.3s' }}
+            value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={onKey} placeholder="Enter URL to trace (e.g., google.com)"
           />
-          <button onClick={handleAnalyze} disabled={isAnalyzing} style={styles.button}>
-            {isAnalyzing ? 'Analyzing...' : 'Execute'}
+          <button onClick={startAnalysis} style={{ background: '#000', color: '#fff', border: 'none', padding: '14px 35px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
+            {isRunning ? 'RUNNING...' : 'EXECUTE'}
           </button>
         </div>
 
-        <div style={styles.progressContainer}>
-          <div style={{ ...styles.progressBar, width: `${progress}%` }}></div>
-        </div>
-
-        <div style={styles.resultsArea} ref={scrollRef}>
-          {steps.map((step) => (
-            <div key={step.id} style={styles.stepCard}>
-              <div style={styles.stepHeader}>
-                <div style={{...styles.dot, backgroundColor: step.status === 'success' ? '#28a745' : (step.status === 'error' ? '#dc3545' : '#007bff'), animation: step.status === 'loading' ? 'pulse 1s infinite' : 'none'}}></div>
-                <span style={styles.stepTitle}>{step.title}</span>
-              </div>
-              <p style={styles.stepDesc}>{step.desc}</p>
+        {/* --- THE DATA GRID (IP, TTL, SSL, MAC) --- */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: '#fff', borderBottom: '1px solid #f5f5f5' }}>
+          {[
+            { label: 'REMOTE_IP', value: activeTask?.ip || '---.---.---.---', color: '#3b82f6' },
+            { label: 'PACKET_TTL', value: activeTask?.ttl || '0', color: '#1a1a1a' },
+            { label: 'SSL_PROTOCOL', value: activeTask?.ssl || 'WAITING', color: '#7c3aed' },
+            { label: 'MAC_ADDRESS', value: activeTask?.mac || 'IDLE', color: '#1a1a1a' }
+          ].map((item, idx) => (
+            <div key={idx} style={{ padding: '20px', textAlign: 'center', borderRight: idx < 3 ? '1px solid #f5f5f5' : 'none' }}>
+              <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '1px' }}>{item.label}</div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: item.color }}>{item.value}</div>
             </div>
           ))}
-          {!isAnalyzing && steps.length === 0 && <p style={styles.placeholder}>System Ready. Enter domain to analyze request lifecycle.</p>}
+        </div>
+
+        {/* Main Console Area */}
+        <div style={{ display: 'flex', height: '500px' }}>
+          
+          <div style={{ flex: 1.5, padding: '50px', position: 'relative' }}>
+            {/* Timeline Progress Bar */}
+            <div style={{ height: '3px', background: '#f3f4f6', borderRadius: '2px', marginBottom: '60px' }}>
+              <div style={{ height: '100%', width: `${(ms / 7000) * 100}%`, background: '#000', transition: 'width 0.1s linear' }}></div>
+            </div>
+
+            {activeTask ? (
+              <div style={{ animation: 'fadeIn 0.4s' }}>
+                <span style={{ color: activeTask.color, fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>{activeTask.layer} ACTIVE</span>
+                <h1 style={{ fontSize: '55px', margin: '15px 0', fontWeight: '900', letterSpacing: '-2px', color: '#000' }}>{activeTask.action}</h1>
+                <p style={{ fontSize: '18px', color: '#6b7280', lineHeight: '1.6', maxWidth: '550px' }}>{activeTask.detail}</p>
+              </div>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e5e7eb', fontSize: '32px', fontWeight: '900' }}>READY</div>
+            )}
+          </div>
+
+          {/* Activity Sidebar */}
+          <div style={{ flex: 0.8, background: '#fafafa', borderLeft: '1px solid #f5f5f5', padding: '30px', overflowY: 'auto' }}>
+            <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 'bold', marginBottom: '20px', letterSpacing: '1px' }}>ACTIVITY_LOG</div>
+            {logs.map((log, i) => (
+              <div key={i} style={{ marginBottom: '15px', paddingLeft: '12px', borderLeft: `2px solid ${log.color}`, fontSize: '12px' }}>
+                <div style={{ color: '#9ca3af', fontSize: '10px' }}>{log.time}ms</div>
+                <div style={{ fontWeight: 'bold', color: '#1a1a1a' }}>{log.action}</div>
+                <div style={{ color: '#d1d5db' }}>SUCCESSFUL</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '15px 30px', background: '#fff', borderTop: '1px solid #f5f5f5', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#d1d5db' }}>
+          <span>LATENCY: {(Math.random() * 15 + 5).toFixed(2)}ms</span>
+          <span>BROWSER_CORE_EMULATOR_V4</span>
         </div>
       </div>
-      <style>{`
-        @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0.3; transform: scale(0.8); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 }
-
-const styles = {
-  container: { backgroundColor: '#f9fafb', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, system-ui, sans-serif', padding: '20px' },
-  card: { backgroundColor: '#ffffff', width: '100%', maxWidth: '600px', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 30px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' },
-  title: { textAlign: 'center', marginBottom: '30px', fontSize: '22px', fontWeight: '800', color: '#111827' },
-  searchBar: { display: 'flex', gap: '10px', marginBottom: '20px' },
-  input: { flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '15px' },
-  button: { padding: '0 25px', backgroundColor: '#111827', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600' },
-  progressContainer: { width: '100%', height: '4px', backgroundColor: '#f1f5f9', borderRadius: '10px', marginBottom: '30px', overflow: 'hidden' },
-  progressBar: { height: '100%', backgroundColor: '#007bff', transition: 'width 0.4s ease' },
-  resultsArea: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  stepCard: { padding: '15px', borderRadius: '12px', border: '1px solid #f1f5f9', animation: 'fadeIn 0.3s ease-out' },
-  stepHeader: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' },
-  dot: { width: '8px', height: '8px', borderRadius: '50%' },
-  stepTitle: { fontWeight: '700', fontSize: '14px', color: '#1f2937' },
-  stepDesc: { fontSize: '13px', color: '#6b7280', marginLeft: '20px', fontFamily: 'monospace', lineHeight: '1.5' },
-  placeholder: { textAlign: 'center', color: '#9ca3af', fontSize: '14px' }
-};
-
-export default App;
