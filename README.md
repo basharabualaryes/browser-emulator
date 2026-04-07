@@ -1,29 +1,24 @@
-# Browser Engine Emulator 
+# Browser Architecture Emulator  (Technical Deep-Dive)
 
-A professional, real-time browser engine emulator built with **React 19** and **Vite**. This tool analyzes the critical rendering path of any URL, providing a step-by-step breakdown of how modern browsers process web requests.
+A high-fidelity browser engine emulator built with **React 19** and **Vite**. This tool provides a step-by-step, real-time visualization of the **Critical Rendering Path** and the **OSI Model Layers** involved in a web request.
 
-##  Key Features (Real-time Analysis)
-Unlike static diagrams, this emulator performs live operations:
-- **Live DNS Resolution:** Fetches real IP addresses using the Google DNS API.
-- **Network Simulation:** Mimics the 3-way TCP Handshake and TLS 1.3 negotiation.
-- **Rendering Pipeline:** Visualizes the transition from HTML parsing to the final Paint.
-- **Latency Emulation:** Uses asynchronous processing to show the time-cost of each phase.
+##  Project Scope (The "In-Depth" Process)
+This emulator doesn't just show text; it simulates the internal mechanics of a browser:
 
-## Tech Stack
-- **React 19** (Latest version for optimal performance)
-- **Vite** (Next-generation frontend tooling)
-- **Google DNS API** (For live domain resolution)
-- **Clean UI Design** (Focusing on professional data visualization)
+1. **DNS Resolution (Layer 7):** Real-time fetching of **A Records**, **IP Addresses**, and **TTL** values using the Google DNS API.
+2. **TCP Handshake (Layer 4):** Visualizing the `SYN` -> `SYN-ACK` -> `ACK` three-way handshake protocol.
+3. **SSL/TLS Negotiation:** Simulating secure handshakes, cipher suites (AES_256_GCM), and TLS 1.3 protocols.
+4. **HTTP Lifecycle:** Emulating the Request/Response cycle, including **H2 (HTTP/2)** protocols, Status Codes (200 OK), and headers.
+5. **Rendering Engine (The Critical Path):** Detailed breakdown of parsing HTML into **DOM Nodes**, calculating **Layout (Reflow)**, and **Rasterizing (Painting)** pixels.
 
-## The Pipeline Breakdown
-1. **DNS Lookup:** Resolves the hostname to an IPv4 address.
-2. **Connection:** Simulates the TCP connection and secure handshake.
-3. **Request/Response:** Emulates the HTTP lifecycle (Headers & Status Codes).
-4. **DOM/CSSOM:** Explains the construction of the Document Object Model.
-5. **Layout & Paint:** Calculating geometry and rendering pixels.
+##  Technical Highlights
+- **Asynchronous Execution:** Built using a custom async event-loop to mimic network latency.
+- **Real Data Integration:** Live API calls to ensure the DNS phase is 100% accurate.
+- **State Management:** Efficient UI updates using React 19 hooks for a seamless "pulse" animation during processing.
+- **Minimalist UX:** A clean, professional white-label interface focusing on data accuracy.
 
-##  Getting Started
-1. Clone the repository
+##  Installation & Setup
+1. Clone the repository.
 2. Install dependencies:
    ```bash
    npm install
