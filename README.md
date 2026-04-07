@@ -1,16 +1,34 @@
-# React + Vite
+# Browser Emulator 🌐
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A browser emulator built with React that analyzes any URL and shows exactly what happens behind the scenes — from DNS lookup to page rendering.
 
-Currently, two official plugins are available:
+## Live Demo
+Run locally on `http://localhost:5173`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What it does
+Enter any URL and see:
+- **DNS Lookup** — resolves the domain to a real IP address
+- **TCP Handshake** — explains the 3-way connection process
+- **TLS / HTTPS** — shows how encryption is established
+- **HTTP Request** — displays request and response headers
+- **HTML Parsing** — tokenization and DOM construction
+- **DOM Tree** — node structure of the page
+- **CSS / CSSOM** — stylesheet parsing and rule matching
+- **Render Tree** — combining DOM + CSSOM
+- **Layout** — calculating element positions
+- **Paint & Composite** — drawing pixels on screen
+- **JavaScript Engine** — V8 event loop explained
 
-## React Compiler
+## Tech Stack
+- React 18
+- Vite
+- Google DNS API (`dns.google/resolve`)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Author
+Bashar Abu Alaryes
