@@ -1,24 +1,45 @@
-# Browser Architecture Emulator  (Technical Deep-Dive)
+#  Browser Core Engine Emulator (Deep Trace V4)
 
-A high-fidelity browser engine emulator built with **React 19** and **Vite**. This tool provides a step-by-step, real-time visualization of the **Critical Rendering Path** and the **OSI Model Layers** involved in a web request.
+A high-performance **React-based browser emulator** designed to visualize the internal lifecycle of a web request. This tool provides a deep dive into the browser's networking stack, security handshakes, and rendering pipeline.
 
-##  Project Scope (The "In-Depth" Process)
-This emulator doesn't just show text; it simulates the internal mechanics of a browser:
+##  Key Features
 
-1. **DNS Resolution (Layer 7):** Real-time fetching of **A Records**, **IP Addresses**, and **TTL** values using the Google DNS API.
-2. **TCP Handshake (Layer 4):** Visualizing the `SYN` -> `SYN-ACK` -> `ACK` three-way handshake protocol.
-3. **SSL/TLS Negotiation:** Simulating secure handshakes, cipher suites (AES_256_GCM), and TLS 1.3 protocols.
-4. **HTTP Lifecycle:** Emulating the Request/Response cycle, including **H2 (HTTP/2)** protocols, Status Codes (200 OK), and headers.
-5. **Rendering Engine (The Critical Path):** Detailed breakdown of parsing HTML into **DOM Nodes**, calculating **Layout (Reflow)**, and **Rasterizing (Painting)** pixels.
+* **Real-Time Network Tracing:** Visualizes the journey from `Kernel Socket Initialization` to `GPU Compositing`.
+* **Deep Data Inspection:** Live monitoring of critical network parameters:
+    * **Target IP:** Resolves and tracks destination server addresses.
+    * **Packet TTL (Time To Live):** Monitors hop limits and network latency.
+    * **SSL/TLS Cipher Suite:** Identifies encryption protocols (e.g., TLS 1.3, AES-256-GCM).
+    * **MAC Identifiers:** Simulates hardware-level interface addressing.
+* **Interactive Terminal:** Full support for `Enter` key triggers and real-time activity logging.
+* **Clean Professional UI:** A minimalist, high-contrast light-mode interface for maximum readability.
 
-##  Technical Highlights
-- **Asynchronous Execution:** Built using a custom async event-loop to mimic network latency.
-- **Real Data Integration:** Live API calls to ensure the DNS phase is 100% accurate.
-- **State Management:** Efficient UI updates using React 19 hooks for a seamless "pulse" animation during processing.
-- **Minimalist UX:** A clean, professional white-label interface focusing on data accuracy.
+##  Technical Workflow Simulated
 
-##  Installation & Setup
-1. Clone the repository.
-2. Install dependencies:
-   ```bash
-   npm install
+1.  **OS Kernel Layer:** Memory allocation and TCP stack preparation.
+2.  **DNS Layer:** Recursive resolution and TTL mapping.
+3.  **Transport Layer:** TCP 3-Way Handshake (SYN-ACK).
+4.  **Security Layer:** SSL/TLS certificate validation and key exchange.
+5.  **Rendering Engine:** DOM Tree construction, CSSOM calculation, and Layout Reflow.
+6.  **GPU Acceleration:** Layer compositing and VSYNC frame committing.
+
+##  Installation & Usage
+
+1.  **Clone the project:**
+    ```bash
+    git clone [https://github.com/your-username/browser-emulator.git](https://github.com/your-username/browser-emulator.git)
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Run the application:**
+    ```bash
+    npm start
+    ```
+4.  **Execute Trace:** Enter any URL in the search bar and press **`ENTER`**.
+
+##  Design Philosophy
+The UI is built with a **"Utility-First"** approach, using a clean white aesthetic to ensure that technical data (IPs and Logs) remains the focal point for the user/administrator.
+
+---
+*Developed for advanced browser lifecycle visualization.*
