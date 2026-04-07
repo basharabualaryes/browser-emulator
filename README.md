@@ -1,34 +1,29 @@
-# Browser Emulator 🌐
+# Browser Engine Emulator 
 
-A browser emulator built with React that analyzes any URL and shows exactly what happens behind the scenes — from DNS lookup to page rendering.
+A professional, real-time browser engine emulator built with **React 19** and **Vite**. This tool analyzes the critical rendering path of any URL, providing a step-by-step breakdown of how modern browsers process web requests.
 
-## Live Demo
-Run locally on `http://localhost:5173`
-
-## What it does
-Enter any URL and see:
-- **DNS Lookup** — resolves the domain to a real IP address
-- **TCP Handshake** — explains the 3-way connection process
-- **TLS / HTTPS** — shows how encryption is established
-- **HTTP Request** — displays request and response headers
-- **HTML Parsing** — tokenization and DOM construction
-- **DOM Tree** — node structure of the page
-- **CSS / CSSOM** — stylesheet parsing and rule matching
-- **Render Tree** — combining DOM + CSSOM
-- **Layout** — calculating element positions
-- **Paint & Composite** — drawing pixels on screen
-- **JavaScript Engine** — V8 event loop explained
+##  Key Features (Real-time Analysis)
+Unlike static diagrams, this emulator performs live operations:
+- **Live DNS Resolution:** Fetches real IP addresses using the Google DNS API.
+- **Network Simulation:** Mimics the 3-way TCP Handshake and TLS 1.3 negotiation.
+- **Rendering Pipeline:** Visualizes the transition from HTML parsing to the final Paint.
+- **Latency Emulation:** Uses asynchronous processing to show the time-cost of each phase.
 
 ## Tech Stack
-- React 18
-- Vite
-- Google DNS API (`dns.google/resolve`)
+- **React 19** (Latest version for optimal performance)
+- **Vite** (Next-generation frontend tooling)
+- **Google DNS API** (For live domain resolution)
+- **Clean UI Design** (Focusing on professional data visualization)
 
-## Getting Started
-```bash
-npm install
-npm run dev
-```
+## The Pipeline Breakdown
+1. **DNS Lookup:** Resolves the hostname to an IPv4 address.
+2. **Connection:** Simulates the TCP connection and secure handshake.
+3. **Request/Response:** Emulates the HTTP lifecycle (Headers & Status Codes).
+4. **DOM/CSSOM:** Explains the construction of the Document Object Model.
+5. **Layout & Paint:** Calculating geometry and rendering pixels.
 
-## Author
-Bashar Abu Alaryes
+##  Getting Started
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
