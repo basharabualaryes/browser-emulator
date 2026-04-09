@@ -1,115 +1,316 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useRef } from "react";
+
+const steps = [
+  {
+    id: "dns", name: "DNS Lookup", label: "DNS",
+    dur: 45, color: "#7F77DD",
+    desc: "Browser checks local cache → OS cache → Router → ISP DNS resolver → Root nameserver → TLD → Authoritative nameserver",
+    details: [
+      { k: "Query", v: "A record" }, { k: "Resolver", v: "ISP DNS" }, { k: "TTL", v: "300s" },
+      { k: "Cache hit", v: "No" }, { k: "Hops", v: "4" }, { k: "Result", v: "93.184.216.34" },
+    ],
+    logLines: [
+      "[0ms] DNS query: example.com A record",
+      "[12ms] → ISP resolver cache miss",
+      "[38ms] ← 93.184.216.34 (TTL 300s)",
+    ],
+    tagBg: "#EEEDFE", tagColor: "#3C3489",
+  },
+  {
+    id: "tcp", name: "TCP Handshake", label: "TCP",
+    dur: 30, color: "#1D9E75",
+    desc: "SYN → SYN-ACK → ACK  |  3-way handshake establishes a reliable connection before any data is sent",
+    details: [
+      { k: "SYN", v: "+0ms" }, { k: "SYN-ACK", v: "+14ms" }, { k: "ACK", v: "+28ms" },
+      { k: "Window", v: "65535 B" }, { k: "MSS", v: "1460 B" }, { k: "Port", v: "443" },
+    ],
+    logLines: [
+      "[45ms] TCP SYN → 93.184.216.34:443",
+      "[59ms] ← SYN-ACK received",
+      "[75ms] → ACK sent — connection established",
+    ],
+    tagBg: "#E1F5EE", tagColor: "#085041",
+  },
+  {
+    id: "tls", name: "TLS Handshake", label: "TLS",
+    dur: 55, color: "#BA7517",
+    desc: "Client Hello → Server Hello + Certificate → Key Exchange → Finished  |  Negotiates encryption using ECDHE, then switches to AES-256-GCM",
+    details: [
+      { k: "Version", v: "TLS 1.3" }, { k: "Cipher", v: "AES-256-GCM" }, { k: "Key Exch", v: "ECDHE" },
+      { k: "Cert issuer", v: "DigiCert" }, { k: "OCSP", v: "Valid" }, { k: "Resumed", v: "No" },
+    ],
+    logLines: [
+      "[75ms] TLS ClientHello (TLS 1.3)",
+      "[92ms] ← ServerHello + Certificate",
+      "[110ms] Verifying cert chain...",
+      "[130ms] ← Finished — AES-256-GCM active",
+    ],
+    tagBg: "#FAEEDA", tagColor: "#633806",
+  },
+  {
+    id: "http", name: "HTTP Request", label: "HTTP",
+    dur: 80, color: "#185FA5",
+    desc: "GET / HTTP/2  |  Browser sends headers (Host, Accept, User-Agent, Cookies). Server responds with 200 OK and streams the HTML body.",
+    details: [
+      { k: "Method", v: "GET /" }, { k: "Protocol", v: "HTTP/2" }, { k: "Status", v: "200 OK" },
+      { k: "Content-Type", v: "text/html" }, { k: "Size", v: "14.2 KB" }, { k: "Encoding", v: "gzip" },
+    ],
+    logLines: [
+      "[130ms] → GET / HTTP/2",
+      "[145ms]   Accept: text/html, */*",
+      "[185ms] ← 200 OK (14.2 KB gzip)",
+      "[210ms]   Content-Type: text/html; charset=UTF-8",
+    ],
+    tagBg: "#E6F1FB", tagColor: "#0C447C",
+  },
+  {
+    id: "parse", name: "Parse HTML / DOM", label: "PARSE",
+    dur: 60, color: "#993C1D",
+    desc: "HTML parser reads bytes → tokens → nodes → DOM tree. CSS parser builds CSSOM. JS blocks parsing if render-blocking scripts are found.",
+    details: [
+      { k: "Nodes", v: "847" }, { k: "Scripts", v: "3 found" }, { k: "Stylesheets", v: "2 found" },
+      { k: "Images", v: "6 found" }, { k: "Blocking", v: "1 script" }, { k: "DOMState", v: "loading" },
+    ],
+    logLines: [
+      "[210ms] HTML tokenizer started",
+      "[230ms] Render-blocking script found",
+      "[240ms] Preload scanner: 6 resources queued",
+      "[270ms] DOMContentLoaded fired",
+    ],
+    tagBg: "#FAECE7", tagColor: "#4A1B0C",
+  },
+  {
+    id: "assets", name: "Fetch Assets", label: "ASSETS",
+    dur: 120, color: "#993556",
+    desc: "Browser opens parallel HTTP/2 streams for CSS, JS, images, fonts. Multiplexing allows all assets on one TCP connection. Critical assets are prioritised.",
+    details: [
+      { k: "CSS", v: "2 files (48KB)" }, { k: "JS", v: "3 files (210KB)" }, { k: "Images", v: "6 files (380KB)" },
+      { k: "Fonts", v: "2 files (60KB)" }, { k: "Total", v: "698 KB" }, { k: "Cached", v: "3 hits" },
+    ],
+    logLines: [
+      "[270ms] Fetching 13 sub-resources...",
+      "[280ms] style.css 200 (48KB, cached)",
+      "[300ms] app.js 200 (210KB)",
+      "[350ms] hero.jpg 200 (380KB)",
+      "[390ms] All assets loaded",
+    ],
+    tagBg: "#FBEAF0", tagColor: "#4B1528",
+  },
+  {
+    id: "render", name: "Render Pipeline", label: "RENDER",
+    dur: 40, color: "#3B6D11",
+    desc: "DOM + CSSOM → Render Tree → Layout (px positions) → Paint (rasterize pixels) → Composite (GPU layers merge) → Frame on screen",
+    details: [
+      { k: "Render Tree", v: "612 nodes" }, { k: "Layout", v: "18ms" }, { k: "Paint", v: "9ms" },
+      { k: "Composite", v: "4ms" }, { k: "FPS", v: "60" }, { k: "LCP", v: "410ms" },
+    ],
+    logLines: [
+      "[390ms] Render tree built (612 nodes)",
+      "[408ms] Layout pass complete",
+      "[417ms] Paint complete",
+      "[421ms] Composite — frame on screen!",
+      "[430ms] load event fired",
+    ],
+    tagBg: "#EAF3DE", tagColor: "#173404",
+  },
+];
+
+const TOTAL_DUR = steps.reduce((s, x) => s + x.dur, 0);
+const SPEED = 4;
+
+const byteMap = { http: 14, parse: 48, assets: 698 };
+
+const styles = {
+  wrap: { padding: "20px", backgroundColor: "#f4f4f4", minHeight: "100vh", fontFamily: "monospace" },
+  card: { maxWidth: "900px", margin: "0 auto", backgroundColor: "#fff", border: "1px solid #ddd", borderRadius: "12px", overflow: "hidden" },
+  header: { padding: "20px", borderBottom: "1px solid #eee", background: "#fafafa" },
+  title: { fontSize: "18px", fontWeight: "600", marginBottom: "4px", color: "#111" },
+  subtitle: { fontSize: "12px", color: "#888" },
+  urlRow: { display: "flex", gap: "10px", marginTop: "14px" },
+  input: { flex: 1, padding: "10px 14px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", fontSize: "13px", fontFamily: "monospace", outline: "none" },
+  runBtn: (disabled) => ({ padding: "10px 24px", borderRadius: "8px", border: "none", background: disabled ? "#ccc" : "#111", color: "#fff", cursor: disabled ? "not-allowed" : "pointer", fontSize: "13px", fontFamily: "monospace", fontWeight: "600" }),
+  metrics: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1px", background: "#eee", borderBottom: "1px solid #eee" },
+  metric: { background: "#fff", padding: "14px 18px" },
+  metricLabel: { fontSize: "10px", color: "#999", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px" },
+  metricVal: (color) => ({ fontSize: "20px", fontWeight: "600", color: color || "#111", fontFamily: "monospace" }),
+  body: { display: "flex", minHeight: "500px" },
+  timeline: { flex: 1, padding: "16px 0", borderRight: "1px solid #eee" },
+  stepRow: { display: "flex", alignItems: "stretch", minHeight: "60px" },
+  stepLeft: { width: "150px", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "flex-start", padding: "8px 14px 8px 0", textAlign: "right", paddingTop: "14px" },
+  stepName: { fontSize: "12px", fontWeight: "600", color: "#222" },
+  stepTime: { fontSize: "11px", color: "#aaa", marginTop: "2px" },
+  stepCenter: { width: "28px", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" },
+  dot: (state) => ({
+    width: "12px", height: "12px", borderRadius: "50%", marginTop: "18px", flexShrink: 0, zIndex: 1,
+    border: state === "idle" ? "2px solid #ddd" : "2px solid " + (state === "running" ? "#EF9F27" : "#1D9E75"),
+    background: state === "idle" ? "#fff" : state === "running" ? "#EF9F27" : "#1D9E75",
+    boxShadow: state === "running" ? "0 0 0 4px rgba(239,159,39,0.2)" : state === "done" ? "0 0 0 3px rgba(29,158,117,0.15)" : "none",
+    transition: "all 0.3s",
+  }),
+  line: (done) => ({ width: "2px", background: done ? "#1D9E75" : "#eee", flex: 1, margin: "0 auto", transition: "background 0.5s" }),
+  stepRight: { flex: 1, padding: "8px 16px 12px" },
+  tag: (bg, color) => ({ display: "inline-block", fontSize: "10px", padding: "2px 8px", borderRadius: "99px", fontWeight: "600", background: bg, color: color, marginBottom: "6px", marginTop: "10px" }),
+  desc: { fontSize: "12px", color: "#555", lineHeight: "1.6", marginBottom: "8px" },
+  detailGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", marginBottom: "8px" },
+  detailCell: { background: "#f8f8f8", borderRadius: "6px", padding: "6px 10px" },
+  detailKey: { fontSize: "9px", color: "#aaa", textTransform: "uppercase", letterSpacing: "0.05em" },
+  detailVal: { fontSize: "11px", color: "#222", fontFamily: "monospace", marginTop: "2px" },
+  barBg: { height: "5px", background: "#f0f0f0", borderRadius: "3px", overflow: "hidden" },
+  logPanel: { width: "280px", background: "#0d1117", padding: "14px", overflowY: "auto", maxHeight: "600px" },
+  logTitle: { fontSize: "10px", color: "#6e7681", letterSpacing: "0.08em", marginBottom: "10px", textTransform: "uppercase" },
+  logLine: { fontSize: "11px", fontFamily: "monospace", lineHeight: "1.7", color: "#8b949e" },
+};
+
+function BarFill({ color, active }) {
+  const [width, setWidth] = useState(0);
+  if (active && width === 0) setTimeout(() => setWidth(100), 50);
+  if (!active && width !== 0) setWidth(0);
+  return <div style={{ height: "100%", width: width + "%", background: color, borderRadius: "3px", transition: "width 0.8s ease" }} />;
+}
 
 export default function App() {
-  const [url, setUrl] = useState('');
-  const [ms, setMs] = useState(0); 
-  const [isRunning, setIsRunning] = useState(false);
-  const [activeTask, setActiveTask] = useState(null);
-  const [logs, setLogs] = useState([]);
+  const [url, setUrl] = useState("https://example.com");
+  const [running, setRunning] = useState(false);
+  const [stepStates, setStepStates] = useState(steps.map(() => "idle"));
+  const [lineDone, setLineDone] = useState(steps.map(() => false));
+  const [stepTimes, setStepTimes] = useState(steps.map(() => "—"));
+  const [activeSteps, setActiveSteps] = useState(steps.map(() => false));
+  const [barActive, setBarActive] = useState(steps.map(() => false));
+  const [logLines, setLogLines] = useState([{ text: "[ready] Enter a URL and press RUN", color: "#6e7681" }]);
+  const [metrics, setMetrics] = useState({ time: "0 ms", ip: "—", proto: "—", bytes: "0 KB" });
+  const timers = useRef([]);
 
-  const pipeline = [
-    { time: 600,  layer: "SYSTEM", action: "KERNEL_SOCKET_INIT", ip: "192.168.1.45", ttl: "64", ssl: "WAITING", mac: "00:E0:4C:68", detail: "Allocating TCP/IP buffers and initializing physical interface descriptors.", color: "#3b82f6" },
-    { time: 1600, layer: "NETWORK", action: "DNS_RESOLUTION", ip: "8.8.4.4", ttl: "54", ssl: "UDP_SECURE", mac: "GATEWAY_DEFAULT", detail: "Resolving host via Google DNS. TTL indicates 10 network hops to target.", color: "#2563eb" },
-    { time: 2600, layer: "TRANSPORT", action: "TCP_HANDSHAKE", ip: "142.251.40.174", ttl: "128", ssl: "TCP_SYN", mac: "NODE_REMOTE_01", detail: "Synchronizing sequence numbers. Establishing bi-directional flow control.", color: "#1d4ed8" },
-    { time: 3600, layer: "SECURITY", action: "SSL_CERT_VALIDATE", ip: "142.251.40.174", ttl: "128", ssl: "TLS_1.3_X25519", mac: "SHA256_VERIFIED", detail: "Handshaking encryption keys. Cipher Suite: AES_256_GCM_SHA384.", color: "#7c3aed" },
-    { time: 4600, layer: "SESSION", action: "HTTP_STREAMING", ip: "INBOUND_STREAM", ttl: "52", ssl: "TLS_ACTIVE", mac: "PKT_CAPTURE_ON", detail: "Receiving raw binary frames. Parsing HTTP/2 pseudo-headers and payload.", color: "#059669" },
-    { time: 5600, layer: "ENGINE", action: "DOM_PARSING", ip: "V8_HEAP_ACTIVE", ttl: "N/A", ssl: "N/A", mac: "DOM_TREE_GEN", detail: "Converting byte stream into memory-resident Node objects and Tree structure.", color: "#d97706" },
-    { time: 6600, layer: "GRAPHICS", action: "GPU_COMPOSITING", ip: "VRAM_BUFFER", ttl: "N/A", ssl: "VSYNC_READY", mac: "RASTER_THREAD", detail: "Merging layers on hardware. Committing final frame to front display buffer.", color: "#0891b2" }
-  ];
-
-  const startAnalysis = () => {
-    if (!url || isRunning) return;
-    setIsRunning(true); setMs(0); setLogs([]); setActiveTask(null);
-    let start = null;
-    const animate = (now) => {
-      if (!start) start = now;
-      const progress = now - start;
-      if (progress <= 7000) {
-        setMs(progress);
-        const task = [...pipeline].reverse().find(e => progress >= e.time);
-        if (task && activeTask?.action !== task.action) {
-          setActiveTask(task);
-          setLogs(prev => [task, ...prev]);
-        }
-        requestAnimationFrame(animate);
-      } else { setIsRunning(false); }
-    };
-    requestAnimationFrame(animate);
+  const addLog = (lines, color = "#8b949e") => {
+    setLogLines(prev => [...prev, ...lines.map(text => ({ text, color }))]);
   };
 
-  const onKey = (e) => { if (e.key === 'Enter') startAnalysis(); };
+  const runSim = () => {
+    if (running) return;
+    setRunning(true);
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    setStepStates(steps.map(() => "idle"));
+    setLineDone(steps.map(() => false));
+    setStepTimes(steps.map(() => "—"));
+    setActiveSteps(steps.map(() => false));
+    setBarActive(steps.map(() => false));
+    setLogLines([{ text: `[0ms] Navigating to ${url || "https://example.com"}`, color: "#58a6ff" }]);
+    setMetrics({ time: "0 ms", ip: "—", proto: "—", bytes: "0 KB" });
+
+    let elapsed = 0;
+    let totalBytes = 0;
+
+    steps.forEach((s, i) => {
+      const startAt = elapsed;
+      elapsed += s.dur;
+      const endAt = elapsed;
+
+      timers.current.push(setTimeout(() => {
+        setStepStates(prev => prev.map((v, j) => j === i ? "running" : v));
+        setActiveSteps(prev => prev.map((v, j) => j === i ? true : v));
+        setBarActive(prev => prev.map((v, j) => j === i ? true : v));
+        setStepTimes(prev => prev.map((v, j) => j === i ? `+${startAt}ms` : v));
+        addLog(s.logLines, "#8b949e");
+        if (i === 0) setMetrics(m => ({ ...m, ip: "93.184.216.34" }));
+        if (i === 2) setMetrics(m => ({ ...m, proto: "TLS 1.3 / H2" }));
+      }, startAt * SPEED));
+
+      timers.current.push(setTimeout(() => {
+        setStepStates(prev => prev.map((v, j) => j === i ? "done" : v));
+        setLineDone(prev => prev.map((v, j) => j === i ? true : v));
+        totalBytes += byteMap[s.id] || 0;
+        setMetrics(m => ({ ...m, time: endAt + " ms", bytes: totalBytes + " KB" }));
+        if (i === steps.length - 1) {
+          setRunning(false);
+          addLog([`[${endAt}ms] ✓ Page fully loaded in ${endAt}ms`], "#3fb950");
+        }
+      }, endAt * SPEED));
+    });
+  };
 
   return (
-    <div style={{ backgroundColor: '#fcfcfc', minHeight: '100vh', padding: '40px', fontFamily: '"Segoe UI", Roboto, sans-serif', color: '#1a1a1a' }}>
-      <div style={{ maxWidth: '1100px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #eee', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.03)' }}>
-        
-        {/* URL Input Bar */}
-        <div style={{ padding: '25px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '6px', marginRight: '10px' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e5e7eb' }}></div>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e5e7eb' }}></div>
+    <div style={styles.wrap}>
+      <div style={styles.card}>
+
+        {/* Header */}
+        <div style={styles.header}>
+          <div style={styles.title}>Browser Request Lifecycle</div>
+          <div style={styles.subtitle}>Real-time emulation of what happens when you visit a URL</div>
+          <div style={styles.urlRow}>
+            <input
+              style={styles.input}
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && runSim()}
+              placeholder="https://example.com"
+            />
+            <button style={styles.runBtn(running)} onClick={runSim} disabled={running}>
+              {running ? "RUNNING..." : "RUN"}
+            </button>
           </div>
-          <input 
-            style={{ flex: 1, padding: '14px 20px', borderRadius: '10px', border: '1px solid #eee', background: '#f9fafb', fontSize: '14px', outline: 'none', transition: 'all 0.3s' }}
-            value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={onKey} placeholder="Enter URL to trace (e.g., google.com)"
-          />
-          <button onClick={startAnalysis} style={{ background: '#000', color: '#fff', border: 'none', padding: '14px 35px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
-            {isRunning ? 'RUNNING...' : 'EXECUTE'}
-          </button>
         </div>
 
-        {/* --- THE DATA GRID (IP, TTL, SSL, MAC) --- */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: '#fff', borderBottom: '1px solid #f5f5f5' }}>
+        {/* Metrics */}
+        <div style={styles.metrics}>
           {[
-            { label: 'REMOTE_IP', value: activeTask?.ip || '---.---.---.---', color: '#3b82f6' },
-            { label: 'PACKET_TTL', value: activeTask?.ttl || '0', color: '#1a1a1a' },
-            { label: 'SSL_PROTOCOL', value: activeTask?.ssl || 'WAITING', color: '#7c3aed' },
-            { label: 'MAC_ADDRESS', value: activeTask?.mac || 'IDLE', color: '#1a1a1a' }
-          ].map((item, idx) => (
-            <div key={idx} style={{ padding: '20px', textAlign: 'center', borderRight: idx < 3 ? '1px solid #f5f5f5' : 'none' }}>
-              <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '1px' }}>{item.label}</div>
-              <div style={{ fontSize: '15px', fontWeight: '800', color: item.color }}>{item.value}</div>
+            { label: "Total Time", val: metrics.time, color: "#185FA5" },
+            { label: "IP Address", val: metrics.ip, color: "#222" },
+            { label: "Protocol", val: metrics.proto, color: "#1D9E75" },
+            { label: "Transferred", val: metrics.bytes, color: "#BA7517" },
+          ].map(m => (
+            <div key={m.label} style={styles.metric}>
+              <div style={styles.metricLabel}>{m.label}</div>
+              <div style={styles.metricVal(m.color)}>{m.val}</div>
             </div>
           ))}
         </div>
 
-        {/* Main Console Area */}
-        <div style={{ display: 'flex', height: '500px' }}>
-          
-          <div style={{ flex: 1.5, padding: '50px', position: 'relative' }}>
-            {/* Timeline Progress Bar */}
-            <div style={{ height: '3px', background: '#f3f4f6', borderRadius: '2px', marginBottom: '60px' }}>
-              <div style={{ height: '100%', width: `${(ms / 7000) * 100}%`, background: '#000', transition: 'width 0.1s linear' }}></div>
-            </div>
+        {/* Body */}
+        <div style={styles.body}>
 
-            {activeTask ? (
-              <div style={{ animation: 'fadeIn 0.4s' }}>
-                <span style={{ color: activeTask.color, fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>{activeTask.layer} ACTIVE</span>
-                <h1 style={{ fontSize: '55px', margin: '15px 0', fontWeight: '900', letterSpacing: '-2px', color: '#000' }}>{activeTask.action}</h1>
-                <p style={{ fontSize: '18px', color: '#6b7280', lineHeight: '1.6', maxWidth: '550px' }}>{activeTask.detail}</p>
-              </div>
-            ) : (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e5e7eb', fontSize: '32px', fontWeight: '900' }}>READY</div>
-            )}
-          </div>
-
-          {/* Activity Sidebar */}
-          <div style={{ flex: 0.8, background: '#fafafa', borderLeft: '1px solid #f5f5f5', padding: '30px', overflowY: 'auto' }}>
-            <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 'bold', marginBottom: '20px', letterSpacing: '1px' }}>ACTIVITY_LOG</div>
-            {logs.map((log, i) => (
-              <div key={i} style={{ marginBottom: '15px', paddingLeft: '12px', borderLeft: `2px solid ${log.color}`, fontSize: '12px' }}>
-                <div style={{ color: '#9ca3af', fontSize: '10px' }}>{log.time}ms</div>
-                <div style={{ fontWeight: 'bold', color: '#1a1a1a' }}>{log.action}</div>
-                <div style={{ color: '#d1d5db' }}>SUCCESSFUL</div>
+          {/* Timeline */}
+          <div style={styles.timeline}>
+            {steps.map((s, i) => (
+              <div key={s.id} style={styles.stepRow}>
+                <div style={styles.stepLeft}>
+                  <div style={styles.stepName}>{s.name}</div>
+                  <div style={styles.stepTime}>{stepTimes[i]}</div>
+                </div>
+                <div style={styles.stepCenter}>
+                  <div style={styles.dot(stepStates[i])} />
+                  {i < steps.length - 1 && <div style={styles.line(lineDone[i])} />}
+                </div>
+                <div style={styles.stepRight}>
+                  <div style={styles.tag(s.tagBg, s.tagColor)}>{s.label}</div>
+                  {activeSteps[i] && (
+                    <>
+                      <div style={styles.desc}>{s.desc}</div>
+                      <div style={styles.detailGrid}>
+                        {s.details.map(d => (
+                          <div key={d.k} style={styles.detailCell}>
+                            <div style={styles.detailKey}>{d.k}</div>
+                            <div style={styles.detailVal}>{d.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={styles.barBg}>
+                        <BarFill color={s.color} active={barActive[i]} />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Footer */}
-        <div style={{ padding: '15px 30px', background: '#fff', borderTop: '1px solid #f5f5f5', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#d1d5db' }}>
-          <span>LATENCY: {(Math.random() * 15 + 5).toFixed(2)}ms</span>
-          <span>BROWSER_CORE_EMULATOR_V4</span>
+          {/* Log Panel */}
+          <div style={styles.logPanel}>
+            <div style={styles.logTitle}>Network Log</div>
+            {logLines.map((l, i) => (
+              <div key={i} style={{ ...styles.logLine, color: l.color }}>{l.text}</div>
+            ))}
+          </div>
+
         </div>
       </div>
     </div>
