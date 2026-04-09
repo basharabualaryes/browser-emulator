@@ -7,12 +7,12 @@ const steps = [
     desc: "Browser checks local cache → OS cache → Router → ISP DNS resolver → Root nameserver → TLD → Authoritative nameserver",
     details: [
       { k: "Query", v: "A record" }, { k: "Resolver", v: "ISP DNS" }, { k: "TTL", v: "300s" },
-      { k: "Cache hit", v: "No" }, { k: "Hops", v: "4" }, { k: "Result", v: "93.184.216.34" },
+      { k: "Cache hit", v: "No" }, { k: "Hops", v: "4" }, { k: "Result", v: "resolving..." },
     ],
-    logLines: [
-      "[0ms] DNS query: example.com A record",
-      "[12ms] → ISP resolver cache miss",
-      "[38ms] ← 93.184.216.34 (TTL 300s)",
+    logLines: (hostname, ip) => [
+      `[0ms] DNS query: ${hostname} A record`,
+      `[12ms] → ISP resolver cache miss`,
+      `[38ms] ← ${ip} (TTL 300s)`,
     ],
     tagBg: "#EEEDFE", tagColor: "#3C3489",
   },
@@ -24,10 +24,10 @@ const steps = [
       { k: "SYN", v: "+0ms" }, { k: "SYN-ACK", v: "+14ms" }, { k: "ACK", v: "+28ms" },
       { k: "Window", v: "65535 B" }, { k: "MSS", v: "1460 B" }, { k: "Port", v: "443" },
     ],
-    logLines: [
-      "[45ms] TCP SYN → 93.184.216.34:443",
-      "[59ms] ← SYN-ACK received",
-      "[75ms] → ACK sent — connection established",
+    logLines: (hostname, ip) => [
+      `[45ms] TCP SYN → ${ip}:443`,
+      `[59ms] ← SYN-ACK received`,
+      `[75ms] → ACK sent — connection established`,
     ],
     tagBg: "#E1F5EE", tagColor: "#085041",
   },
@@ -39,11 +39,11 @@ const steps = [
       { k: "Version", v: "TLS 1.3" }, { k: "Cipher", v: "AES-256-GCM" }, { k: "Key Exch", v: "ECDHE" },
       { k: "Cert issuer", v: "DigiCert" }, { k: "OCSP", v: "Valid" }, { k: "Resumed", v: "No" },
     ],
-    logLines: [
-      "[75ms] TLS ClientHello (TLS 1.3)",
-      "[92ms] ← ServerHello + Certificate",
-      "[110ms] Verifying cert chain...",
-      "[130ms] ← Finished — AES-256-GCM active",
+    logLines: () => [
+      `[75ms] TLS ClientHello (TLS 1.3)`,
+      `[92ms] ← ServerHello + Certificate`,
+      `[110ms] Verifying cert chain...`,
+      `[130ms] ← Finished — AES-256-GCM active`,
     ],
     tagBg: "#FAEEDA", tagColor: "#633806",
   },
@@ -55,11 +55,11 @@ const steps = [
       { k: "Method", v: "GET /" }, { k: "Protocol", v: "HTTP/2" }, { k: "Status", v: "200 OK" },
       { k: "Content-Type", v: "text/html" }, { k: "Size", v: "14.2 KB" }, { k: "Encoding", v: "gzip" },
     ],
-    logLines: [
-      "[130ms] → GET / HTTP/2",
-      "[145ms]   Accept: text/html, */*",
-      "[185ms] ← 200 OK (14.2 KB gzip)",
-      "[210ms]   Content-Type: text/html; charset=UTF-8",
+    logLines: (hostname) => [
+      `[130ms] → GET / HTTP/2`,
+      `[145ms]   Host: ${hostname}`,
+      `[185ms] ← 200 OK (14.2 KB gzip)`,
+      `[210ms]   Content-Type: text/html; charset=UTF-8`,
     ],
     tagBg: "#E6F1FB", tagColor: "#0C447C",
   },
@@ -71,11 +71,11 @@ const steps = [
       { k: "Nodes", v: "847" }, { k: "Scripts", v: "3 found" }, { k: "Stylesheets", v: "2 found" },
       { k: "Images", v: "6 found" }, { k: "Blocking", v: "1 script" }, { k: "DOMState", v: "loading" },
     ],
-    logLines: [
-      "[210ms] HTML tokenizer started",
-      "[230ms] Render-blocking script found",
-      "[240ms] Preload scanner: 6 resources queued",
-      "[270ms] DOMContentLoaded fired",
+    logLines: () => [
+      `[210ms] HTML tokenizer started`,
+      `[230ms] Render-blocking script found`,
+      `[240ms] Preload scanner: 6 resources queued`,
+      `[270ms] DOMContentLoaded fired`,
     ],
     tagBg: "#FAECE7", tagColor: "#4A1B0C",
   },
@@ -87,12 +87,12 @@ const steps = [
       { k: "CSS", v: "2 files (48KB)" }, { k: "JS", v: "3 files (210KB)" }, { k: "Images", v: "6 files (380KB)" },
       { k: "Fonts", v: "2 files (60KB)" }, { k: "Total", v: "698 KB" }, { k: "Cached", v: "3 hits" },
     ],
-    logLines: [
-      "[270ms] Fetching 13 sub-resources...",
-      "[280ms] style.css 200 (48KB, cached)",
-      "[300ms] app.js 200 (210KB)",
-      "[350ms] hero.jpg 200 (380KB)",
-      "[390ms] All assets loaded",
+    logLines: () => [
+      `[270ms] Fetching 13 sub-resources...`,
+      `[280ms] style.css 200 (48KB, cached)`,
+      `[300ms] app.js 200 (210KB)`,
+      `[350ms] hero.jpg 200 (380KB)`,
+      `[390ms] All assets loaded`,
     ],
     tagBg: "#FBEAF0", tagColor: "#4B1528",
   },
@@ -104,20 +104,18 @@ const steps = [
       { k: "Render Tree", v: "612 nodes" }, { k: "Layout", v: "18ms" }, { k: "Paint", v: "9ms" },
       { k: "Composite", v: "4ms" }, { k: "FPS", v: "60" }, { k: "LCP", v: "410ms" },
     ],
-    logLines: [
-      "[390ms] Render tree built (612 nodes)",
-      "[408ms] Layout pass complete",
-      "[417ms] Paint complete",
-      "[421ms] Composite — frame on screen!",
-      "[430ms] load event fired",
+    logLines: () => [
+      `[390ms] Render tree built (612 nodes)`,
+      `[408ms] Layout pass complete`,
+      `[417ms] Paint complete`,
+      `[421ms] Composite — frame on screen!`,
+      `[430ms] load event fired`,
     ],
     tagBg: "#EAF3DE", tagColor: "#173404",
   },
 ];
 
-const TOTAL_DUR = steps.reduce((s, x) => s + x.dur, 0);
 const SPEED = 4;
-
 const byteMap = { http: 14, parse: 48, assets: 698 };
 
 const styles = {
@@ -169,13 +167,14 @@ function BarFill({ color, active }) {
 }
 
 export default function App() {
-  const [url, setUrl] = useState("https://example.com");
+  const [url, setUrl] = useState("https://google.com");
   const [running, setRunning] = useState(false);
   const [stepStates, setStepStates] = useState(steps.map(() => "idle"));
   const [lineDone, setLineDone] = useState(steps.map(() => false));
   const [stepTimes, setStepTimes] = useState(steps.map(() => "—"));
   const [activeSteps, setActiveSteps] = useState(steps.map(() => false));
   const [barActive, setBarActive] = useState(steps.map(() => false));
+  const [stepDetails, setStepDetails] = useState(steps.map(s => s.details));
   const [logLines, setLogLines] = useState([{ text: "[ready] Enter a URL and press RUN", color: "#6e7681" }]);
   const [metrics, setMetrics] = useState({ time: "0 ms", ip: "—", proto: "—", bytes: "0 KB" });
   const timers = useRef([]);
@@ -184,7 +183,7 @@ export default function App() {
     setLogLines(prev => [...prev, ...lines.map(text => ({ text, color }))]);
   };
 
-  const runSim = () => {
+  const runSim = async () => {
     if (running) return;
     setRunning(true);
     timers.current.forEach(clearTimeout);
@@ -194,8 +193,32 @@ export default function App() {
     setStepTimes(steps.map(() => "—"));
     setActiveSteps(steps.map(() => false));
     setBarActive(steps.map(() => false));
-    setLogLines([{ text: `[0ms] Navigating to ${url || "https://example.com"}`, color: "#58a6ff" }]);
-    setMetrics({ time: "0 ms", ip: "—", proto: "—", bytes: "0 KB" });
+    setStepDetails(steps.map(s => s.details));
+
+    const rawUrl = url || "https://google.com";
+    const fullUrl = rawUrl.startsWith("http") ? rawUrl : "https://" + rawUrl;
+    let hostname = rawUrl;
+    try { hostname = new URL(fullUrl).hostname; } catch {}
+
+    setLogLines([{ text: `[0ms] Navigating to ${fullUrl}`, color: "#58a6ff" }]);
+    setMetrics({ time: "0 ms", ip: "resolving...", proto: "—", bytes: "0 KB" });
+
+    // Real DNS lookup using Google's DNS over HTTPS API
+    let resolvedIp = "Could not resolve";
+    try {
+      const res = await fetch(`https://dns.google/resolve?name=${hostname}&type=A`);
+      const data = await res.json();
+      resolvedIp = data.Answer?.[0]?.data || "Not found";
+    } catch {
+      resolvedIp = "DNS failed";
+    }
+
+    // Update DNS step Result cell with the real IP
+    setStepDetails(prev => prev.map((details, i) =>
+      i === 0
+        ? details.map(d => d.k === "Result" ? { ...d, v: resolvedIp } : d)
+        : details
+    ));
 
     let elapsed = 0;
     let totalBytes = 0;
@@ -210,8 +233,8 @@ export default function App() {
         setActiveSteps(prev => prev.map((v, j) => j === i ? true : v));
         setBarActive(prev => prev.map((v, j) => j === i ? true : v));
         setStepTimes(prev => prev.map((v, j) => j === i ? `+${startAt}ms` : v));
-        addLog(s.logLines, "#8b949e");
-        if (i === 0) setMetrics(m => ({ ...m, ip: "93.184.216.34" }));
+        addLog(s.logLines(hostname, resolvedIp), "#8b949e");
+        if (i === 0) setMetrics(m => ({ ...m, ip: resolvedIp }));
         if (i === 2) setMetrics(m => ({ ...m, proto: "TLS 1.3 / H2" }));
       }, startAt * SPEED));
 
@@ -242,7 +265,7 @@ export default function App() {
               value={url}
               onChange={e => setUrl(e.target.value)}
               onKeyDown={e => e.key === "Enter" && runSim()}
-              placeholder="https://example.com"
+              placeholder="https://google.com"
             />
             <button style={styles.runBtn(running)} onClick={runSim} disabled={running}>
               {running ? "RUNNING..." : "RUN"}
@@ -286,7 +309,7 @@ export default function App() {
                     <>
                       <div style={styles.desc}>{s.desc}</div>
                       <div style={styles.detailGrid}>
-                        {s.details.map(d => (
+                        {stepDetails[i].map(d => (
                           <div key={d.k} style={styles.detailCell}>
                             <div style={styles.detailKey}>{d.k}</div>
                             <div style={styles.detailVal}>{d.v}</div>
