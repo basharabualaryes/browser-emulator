@@ -1,123 +1,34 @@
-#  Browser Request Lifecycle Emulator
+# Browser Request Lifecycle Visualizer (Pro Edition)
 
-> A real-time visual simulation of everything that happens when you type a URL and press Enter.
-
----
-
-##  What is this project?
-
-This is a React application that simulates the full journey of a browser request — from the initial DNS lookup all the way until the page is fully rendered on screen.
-
-Every step animates in real-time and displays:
--  Exact timing in milliseconds
--  Full technical details per step
--  A live network log
+An advanced, interactive educational tool built with **React.js** to simulate and visualize the complex journey of a web request—from the moment a URL is entered until the final frame is rendered at 60fps.
 
 ---
 
-##  Getting Started
+## Overview
+This project provides a deep-dive into browser internals. Unlike simple diagrams, this is a **real-time simulator** that mimics DNS resolution, network handshakes, resource fetching priorities, JavaScript execution pipelines, and the critical rendering path.
 
-```bash
-# 1. Install dependencies
-npm install
+##  Key Features
 
-# 2. Start the development server
-npm run dev
+### 1. Real-Time DNS Resolution
+* **Live Query:** Uses Google's DNS-over-HTTPS (DoH) to fetch actual IP addresses for any hostname entered.
+* **Resolution Chain:** Visualizes the hop-by-hop process (Browser Cache → OS → ISP → Root → TLD → Authoritative NS).
 
-# 3. Open your browser at
-http://localhost:5173
-```
+### 2. Network Stack Simulation
+* **TCP & TLS Handshakes:** Details the 3-way handshake and the TLS 1.3 negotiation (Cipher suites, Certificates).
+* **HTTP/2 Multiplexing:** Explains how parallel streams allow fetching multiple assets without head-of-line blocking.
 
----
+### 3.Engine Internals
+* **V8 Pipeline:** Visualizes how JavaScript is processed (Parsing → AST → Ignition Bytecode → TurboFan JIT).
+* **HTML/CSS Parsing:** Shows the creation of the DOM and CSSOM, including a visual tree representation.
 
-##  The 7 Steps Simulated
-
-| # | Step | Timing | What happens |
-|---|------|--------|--------------|
-| 1 | **DNS Lookup** | `0–45ms` | Translates the domain name into an IP address via DNS resolvers |
-| 2 | **TCP Handshake** | `45–75ms` | Establishes a reliable connection: SYN → SYN-ACK → ACK |
-| 3 | **TLS Handshake** | `75–130ms` | Encrypts the connection using TLS 1.3 and AES-256-GCM |
-| 4 | **HTTP Request** | `130–210ms` | Sends GET / HTTP/2 and receives 200 OK with the HTML body |
-| 5 | **Parse HTML / DOM** | `210–270ms` | Builds the DOM tree, discovers sub-resources, fires DOMContentLoaded |
-| 6 | **Fetch Assets** | `270–390ms` | Downloads CSS, JS, images and fonts in parallel over HTTP/2 |
-| 7 | **Render Pipeline** | `390–430ms` | Layout → Paint → Composite → frame appears on screen |
+### 4. Critical Rendering Path (CRP)
+* **Render Pipeline:** Breaks down Style Recalculation, Layout (Reflow), Painting, and GPU Compositing.
+* **Performance Metrics:** Tracks Core Web Vitals like **LCP (Largest Contentful Paint)** and **CLS (Cumulative Layout Shift)**.
 
 ---
 
-##  Project Structure
-
-```
-browser-emulator/
-├── src/
-│   ├── App.jsx          ← All logic and UI (single file)
-│   ├── main.jsx         ← Entry point
-│   └── index.css        ← Global styles
-├── public/
-├── package.json
-├── vite.config.js
-└── README.md
-```
-
----
-
-##  How App.jsx Works
-
-### `steps[]` — Simulation data
-An array that defines all 7 steps with their timing, description, colors, technical details, and log lines.
-
-### `runSim()` — The main engine
-Fires two `setTimeout` calls per step:
-- **First:** when the step starts → sets state to `running` 
-- **Second:** when the step ends → sets state to `done` 
-
-React re-renders automatically on every state change, driving the animation.
-
-### State Overview
-
-| State | Purpose |
-|-------|---------|
-| `stepStates` | Tracks each step: `idle / running / done` |
-| `activeSteps` | Controls whether step details are expanded |
-| `barActive` | Triggers the progress bar fill animation |
-| `logLines` | Accumulates live network log entries |
-| `metrics` | Updates the 4 metric cards at the top |
-
----
-
-##  Tech Stack
-
-| Tool | Usage |
-|------|-------|
-| **React 18** | UI and state management |
-| **Vite** | Dev server and build tool |
-| **Inline CSS** | Styling with no external libraries |
-
----
-
-##  Customization
-
-All simulation data lives in the `steps` array at the top of `App.jsx`:
-
-```jsx
-{
-  id: "dns",
-  name: "DNS Lookup",
-  dur: 45,          // duration in ms
-  color: "#7F77DD", // progress bar color
-  desc: "...",      // description shown when step activates
-  details: [...],   // technical detail grid
-  logLines: [...],  // log entries added to the network log
-}
-```
-
-To speed up or slow down the entire animation:
-
-```jsx
-const SPEED = 4; // lower = faster, higher = slower
-```
-
----
-
-##  Author
-
-**Bashar abu al arayes** ([@bashar](https://github.com/bashar)) — Built as an educational tool to understand how browsers work under the hood.
+## 🛠️ Tech Stack
+* **Frontend:** React.js (Hooks, Functional Components)
+* **Styling:** CSS-in-JS (Dynamic object-based styling)
+* **Graphics:** Scalable Vector Graphics (SVG) for dynamic architectural diagrams.
+* **API:** Google DNS API for real-world data fetching.
