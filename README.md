@@ -27,7 +27,7 @@ This project provides a deep-dive into browser internals. Unlike simple diagrams
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 * **Frontend:** React.js (Hooks, Functional Components)
 * **Styling:** CSS-in-JS (Dynamic object-based styling)
 * **Graphics:** Scalable Vector Graphics (SVG) for dynamic architectural diagrams.
