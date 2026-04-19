@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const steps = [
   {
@@ -189,15 +189,37 @@ const steps = [
 const SPEED = 4;
 const byteMap = { http: 14, parse: 48, assets: 698 };
 
+// How many snapshots correspond to ~5 simulated seconds
+// Total sim time ≈ 485ms * SPEED = ~1940ms real. We have ~N snapshots.
+// We'll treat SKIP_STEPS as a fixed number of snapshot steps per skip.
+const SKIP_STEPS = 8;
+
 const styles = {
   wrap: { padding: "20px", backgroundColor: "#f4f4f4", minHeight: "100vh", fontFamily: "monospace" },
   card: { maxWidth: "900px", margin: "0 auto", backgroundColor: "#fff", border: "1px solid #ddd", borderRadius: "12px", overflow: "hidden" },
   header: { padding: "20px", borderBottom: "1px solid #eee", background: "#fafafa" },
   title: { fontSize: "18px", fontWeight: "600", marginBottom: "4px", color: "#111" },
   subtitle: { fontSize: "12px", color: "#888" },
-  urlRow: { display: "flex", gap: "10px", marginTop: "14px" },
+  urlRow: { display: "flex", gap: "10px", marginTop: "14px", flexWrap: "wrap" },
   input: { flex: 1, padding: "10px 14px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", fontSize: "13px", fontFamily: "monospace", outline: "none" },
   runBtn: (disabled) => ({ padding: "10px 24px", borderRadius: "8px", border: "none", background: disabled ? "#ccc" : "#111", color: "#fff", cursor: disabled ? "not-allowed" : "pointer", fontSize: "13px", fontFamily: "monospace", fontWeight: "600" }),
+  playbackRow: { width: "100%", display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", background: "#f0f0f0", padding: "10px 12px", borderRadius: "10px", border: "1px solid #ddd" },
+  skipBtn: (disabled) => ({
+    padding: "5px 12px",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+    background: disabled ? "#e8e8e8" : "#fff",
+    color: disabled ? "#aaa" : "#333",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontSize: "12px",
+    fontFamily: "monospace",
+    fontWeight: "700",
+    flexShrink: 0,
+    transition: "all 0.15s",
+    userSelect: "none",
+  }),
+  slider: { flex: 1, cursor: "pointer", accentColor: "#534AB7" },
+  sliderLabel: { fontSize: "10px", color: "#666", fontFamily: "monospace", flexShrink: 0, minWidth: "60px", textAlign: "center" },
   metrics: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1px", background: "#eee", borderBottom: "1px solid #eee" },
   metric: { background: "#fff", padding: "14px 18px" },
   metricLabel: { fontSize: "10px", color: "#999", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px" },
@@ -368,8 +390,10 @@ function SubStepsList({ subSteps, active }) {
 
 function BarFill({ color, active }) {
   const [width, setWidth] = useState(0);
-  if (active && width === 0) setTimeout(() => setWidth(100), 50);
-  if (!active && width !== 0) setWidth(0);
+  useEffect(() => {
+    if (active) setWidth(100);
+    else setWidth(0);
+  }, [active]);
   return <div style={{ height: "100%", width: width + "%", background: color, borderRadius: "3px", transition: "width 0.8s ease" }} />;
 }
 
@@ -387,23 +411,72 @@ export default function App() {
   const [subActives, setSubActives] = useState(steps.map(() => -1));
   const [logLines, setLogLines] = useState([{ text: "[ready] Enter a URL and press RUN", color: "#6e7681" }]);
   const [metrics, setMetrics] = useState({ time: "0 ms", ip: "—", proto: "—", bytes: "0 KB" });
+
+  const [history, setHistory] = useState([]);
+  const [playbackIndex, setPlaybackIndex] = useState(-1);
   const timers = useRef([]);
+  const historyRef = useRef([]);
 
   const addLog = (lines, color = "#8b949e") => {
     setLogLines(prev => [...prev, ...lines.map(text => ({ text, color }))]);
   };
 
+  // Apply a snapshot to all state
+  const applySnapshot = (snap) => {
+    setStepStates(snap.stepStates);
+    setLineDone(snap.lineDone);
+    setStepTimes(snap.stepTimes);
+    setActiveSteps(snap.activeSteps);
+    setBarActive(snap.barActive);
+    setMetrics(snap.metrics);
+    setSubActives(snap.subActives);
+    setLogLines(snap.logLines);
+  };
+
+  const handlePlaybackChange = (e) => {
+    const idx = parseInt(e.target.value);
+    setPlaybackIndex(idx);
+    const snap = historyRef.current[idx];
+    if (snap) applySnapshot(snap);
+  };
+
+  // ── NEW: skip backward / forward by SKIP_STEPS snapshots ──
+  const skipBack = () => {
+    const currentIdx = playbackIndex === -1 ? historyRef.current.length - 1 : playbackIndex;
+    const newIdx = Math.max(0, currentIdx - SKIP_STEPS);
+    setPlaybackIndex(newIdx);
+    const snap = historyRef.current[newIdx];
+    if (snap) applySnapshot(snap);
+  };
+
+  const skipForward = () => {
+    const currentIdx = playbackIndex === -1 ? historyRef.current.length - 1 : playbackIndex;
+    const maxIdx = historyRef.current.length - 1;
+    const newIdx = Math.min(maxIdx, currentIdx + SKIP_STEPS);
+    // If we reach the end, switch to "LIVE" mode
+    if (newIdx >= maxIdx) {
+      setPlaybackIndex(-1);
+    } else {
+      setPlaybackIndex(newIdx);
+    }
+    const snap = historyRef.current[newIdx] || historyRef.current[maxIdx];
+    if (snap) applySnapshot(snap);
+  };
+
   const runSim = async () => {
     if (running) return;
     setRunning(true);
+    historyRef.current = [];
+    setHistory([]);
+    setPlaybackIndex(-1);
     timers.current.forEach(clearTimeout);
     timers.current = [];
+
     setStepStates(steps.map(() => "idle"));
     setLineDone(steps.map(() => false));
     setStepTimes(steps.map(() => "—"));
     setActiveSteps(steps.map(() => false));
     setBarActive(steps.map(() => false));
-    setStepDetails(steps.map(s => s.details));
     setSubActives(steps.map(() => -1));
 
     const rawUrl = url || "https://google.com";
@@ -414,18 +487,42 @@ export default function App() {
     setLogLines([{ text: `[0ms] Navigating to ${fullUrl}`, color: "#58a6ff" }]);
     setMetrics({ time: "0 ms", ip: "resolving...", proto: "—", bytes: "0 KB" });
 
-    let resolvedIp = "Could not resolve";
+    let resolvedIp = "DNS failed";
     try {
       const res = await fetch(`https://dns.google/resolve?name=${hostname}&type=A`);
       const data = await res.json();
       resolvedIp = data.Answer?.[0]?.data || "Not found";
-    } catch {
-      resolvedIp = "DNS failed";
-    }
+    } catch { resolvedIp = "DNS failed"; }
 
     setStepDetails(prev => prev.map((details, i) =>
       i === 0 ? details.map(d => d.k === "Result" ? { ...d, v: resolvedIp } : d) : details
     ));
+
+    // Snapshot helper — captures current React state via setters
+    // We use a closure trick: capture variables as they evolve
+    let snap_stepStates = steps.map(() => "idle");
+    let snap_lineDone = steps.map(() => false);
+    let snap_stepTimes = steps.map(() => "—");
+    let snap_activeSteps = steps.map(() => false);
+    let snap_barActive = steps.map(() => false);
+    let snap_metrics = { time: "0 ms", ip: "resolving...", proto: "—", bytes: "0 KB" };
+    let snap_subActives = steps.map(() => -1);
+    let snap_logLines = [{ text: `[0ms] Navigating to ${fullUrl}`, color: "#58a6ff" }];
+
+    const pushSnap = () => {
+      const s = {
+        stepStates: [...snap_stepStates],
+        lineDone: [...snap_lineDone],
+        stepTimes: [...snap_stepTimes],
+        activeSteps: [...snap_activeSteps],
+        barActive: [...snap_barActive],
+        metrics: { ...snap_metrics },
+        subActives: [...snap_subActives],
+        logLines: [...snap_logLines],
+      };
+      historyRef.current.push(s);
+      setHistory(prev => [...prev, s]);
+    };
 
     let elapsed = 0;
     let totalBytes = 0;
@@ -436,34 +533,72 @@ export default function App() {
       const endAt = elapsed;
 
       timers.current.push(setTimeout(() => {
-        setStepStates(prev => prev.map((v, j) => j === i ? "running" : v));
-        setActiveSteps(prev => prev.map((v, j) => j === i ? true : v));
-        setBarActive(prev => prev.map((v, j) => j === i ? true : v));
-        setStepTimes(prev => prev.map((v, j) => j === i ? `+${startAt}ms` : v));
-        addLog(s.logLines(hostname, resolvedIp), "#8b949e");
+        // Update shadow state
+        snap_stepStates = snap_stepStates.map((v, j) => j === i ? "running" : v);
+        snap_activeSteps = snap_activeSteps.map((v, j) => j === i ? true : v);
+        snap_barActive = snap_barActive.map((v, j) => j === i ? true : v);
+        snap_stepTimes = snap_stepTimes.map((v, j) => j === i ? `+${startAt}ms` : v);
+        const newLines = s.logLines(hostname, resolvedIp).map(text => ({ text, color: "#8b949e" }));
+        snap_logLines = [...snap_logLines, ...newLines];
+        if (i === 0) snap_metrics = { ...snap_metrics, ip: resolvedIp };
+        if (i === 2) snap_metrics = { ...snap_metrics, proto: "TLS 1.3 / H2" };
+
+        // Apply to React state
+        setStepStates([...snap_stepStates]);
+        setActiveSteps([...snap_activeSteps]);
+        setBarActive([...snap_barActive]);
+        setStepTimes([...snap_stepTimes]);
+        addLog(s.logLines(hostname, resolvedIp));
         if (i === 0) setMetrics(m => ({ ...m, ip: resolvedIp }));
         if (i === 2) setMetrics(m => ({ ...m, proto: "TLS 1.3 / H2" }));
+
+        pushSnap();
 
         if (s.subSteps) {
           s.subSteps.forEach((_, si) => {
             timers.current.push(setTimeout(() => {
-              setSubActives(prev => prev.map((v, j) => j === i ? si : v));
+              snap_subActives = snap_subActives.map((v, j) => j === i ? si : v);
+              setSubActives([...snap_subActives]);
+              pushSnap();
             }, si * 260));
           });
         }
       }, startAt * SPEED));
 
       timers.current.push(setTimeout(() => {
-        setStepStates(prev => prev.map((v, j) => j === i ? "done" : v));
-        setLineDone(prev => prev.map((v, j) => j === i ? true : v));
+        snap_stepStates = snap_stepStates.map((v, j) => j === i ? "done" : v);
+        snap_lineDone = snap_lineDone.map((v, j) => j === i ? true : v);
         totalBytes += byteMap[s.id] || 0;
-        setMetrics(m => ({ ...m, time: endAt + " ms", bytes: totalBytes + " KB" }));
+        snap_metrics = { ...snap_metrics, time: endAt + " ms", bytes: totalBytes + " KB" };
+
+        setStepStates([...snap_stepStates]);
+        setLineDone([...snap_lineDone]);
+        setMetrics({ ...snap_metrics });
+
         if (i === steps.length - 1) {
           setRunning(false);
-          addLog([`[${endAt}ms] ✓ Page fully loaded in ${endAt}ms`], "#3fb950");
+          const doneLog = { text: `[${endAt}ms] ✓ Page fully loaded in ${endAt}ms`, color: "#3fb950" };
+          snap_logLines = [...snap_logLines, doneLog];
+          setLogLines(prev => [...prev, doneLog]);
         }
+
+        pushSnap();
       }, endAt * SPEED));
     });
+  };
+
+  const histLen = historyRef.current.length || history.length;
+  const currentIdx = playbackIndex === -1 ? histLen - 1 : playbackIndex;
+  const canSkipBack = histLen > 0 && currentIdx > 0;
+  const canSkipForward = histLen > 0 && currentIdx < histLen - 1;
+
+  // Compute a human-readable time label for the slider position
+  const getSnapLabel = (idx) => {
+    if (idx < 0 || histLen === 0) return "LIVE";
+    const pct = histLen > 1 ? idx / (histLen - 1) : 1;
+    const totalSimMs = 485; // approximate total sim duration in ms
+    const simMs = Math.round(pct * totalSimMs);
+    return `~${simMs}ms`;
   };
 
   return (
@@ -484,6 +619,54 @@ export default function App() {
               {running ? "RUNNING..." : "RUN"}
             </button>
           </div>
+
+          {/* ── Playback Controls ── */}
+          {histLen > 0 && (
+            <div style={styles.playbackRow}>
+              {/* Label */}
+              <span style={{ fontSize: "10px", color: "#555", fontWeight: "700", letterSpacing: "0.05em", flexShrink: 0 }}>
+                REPLAY
+              </span>
+
+              {/* −5s skip button */}
+              <button
+                style={styles.skipBtn(!canSkipBack)}
+                onClick={skipBack}
+                disabled={!canSkipBack}
+                title="Skip back ~5 steps"
+              >
+                ◀◀ −5s
+              </button>
+
+              {/* Slider */}
+              <input
+                type="range"
+                min="0"
+                max={histLen - 1}
+                value={currentIdx >= 0 ? currentIdx : histLen - 1}
+                onChange={handlePlaybackChange}
+                style={styles.slider}
+              />
+
+              {/* +5s skip button */}
+              <button
+                style={styles.skipBtn(!canSkipForward)}
+                onClick={skipForward}
+                disabled={!canSkipForward}
+                title="Skip forward ~5 steps"
+              >
+                +5s ▶▶
+              </button>
+
+              {/* Current position label */}
+              <span style={styles.sliderLabel}>
+                {playbackIndex === -1
+                  ? <span style={{ color: "#3fb950", fontWeight: "700" }}>● LIVE</span>
+                  : <span style={{ color: "#534AB7", fontWeight: "700" }}>{getSnapLabel(playbackIndex)}</span>
+                }
+              </span>
+            </div>
+          )}
         </div>
 
         <div style={styles.metrics}>
