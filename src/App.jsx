@@ -156,7 +156,29 @@ const steps = [
       `[445ms] ✓ App interactive (TTI: 445ms)`,
     ],
     tagBg: "#EEEDFE", tagColor: "#26215C",
+    
+    id: "eventloop", name: "Event Loop", label: "LOOP",
+    dur: 70, color: "#EF9F27",
+    desc: "The Orchestrator: Moves tasks from Queues to the Call Stack. Prioritizes Microtasks (Promises) and handles Rendering frames.",
+    details: [
+      { k: "Stack State", v: "Empty" }, { k: "Microtasks", v: "Draining..." }, 
+      { k: "Tick Rate", v: "~16.6ms" }, { k: "Macrotasks", v: "Waiting" }
+    ],
+    subSteps: [
+      { label: "Call Stack Check", desc: "Main thread checks if any function is running. If empty, it looks at the queues.", color: "#EF9F27" },
+      { label: "Microtask Queue", desc: "Highest priority: Promises (like .then) are executed until the queue is empty.", color: "#BA7517" },
+      { label: "Render Opportunity", desc: "Browser checks if a frame update is needed (60fps) before the next task.", color: "#1D9E75" },
+      { label: "Macrotask (Callback)", desc: "Takes the oldest task from the queue (setTimeout, events) and moves it to the stack.", color: "#185FA5" },
+    ],
+    logLines: () => [
+      `[445ms] Loop: Call Stack is clear`,
+      `[450ms] → Draining 8 Microtasks (Promises)`,
+      `[455ms] Rendering pipeline requested`,
+      `[460ms] Executing next Macrotask (setTimeout callback)`,
+    ],
+    tagBg: "#FFF4E5", tagColor: "#663D00",
   },
+
   {
     id: "render", name: "Render Pipeline", label: "RENDER",
     dur: 40, color: "#3B6D11",
@@ -369,6 +391,32 @@ function RenderDiagram() {
     </div>
   );
 }
+function EventLoopDiagram() {
+  return (
+    <div style={{ margin: "10px 0 6px" }}>
+      <div style={{ fontSize: "10px", color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>JavaScript Runtime Pipeline</div>
+      <div style={{ display: "flex", gap: "8px", height: "80px", background: "#fdfdfd", padding: "10px", borderRadius: "8px", border: "1px solid #ffe3b3" }}>
+        <div style={{ flex: 1, border: "2px dashed #EF9F27", borderRadius: "6px", display: "flex", flexDirection: "column-reverse", alignItems: "center", padding: "4px" }}>
+          <div style={{ fontSize: "8px", color: "#EF9F27", fontWeight: "bold" }}>STACK</div>
+          <div style={{ width: "90%", height: "15px", background: "#EF9F27", borderRadius: "3px", marginBottom: "2px" }}></div>
+        </div>
+        <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: "5px" }}>
+          <div style={{ flex: 1, background: "#FAEEDA", borderRadius: "4px", padding: "4px" }}>
+             <div style={{ fontSize: "8px", color: "#BA7517" }}>Microtasks (High)</div>
+             <div style={{ display: "flex", gap: "3px", marginTop: "2px" }}>
+                <div style={{ width: "8px", height: "8px", background: "#BA7517", borderRadius: "2px" }}></div>
+                <div style={{ width: "8px", height: "8px", background: "#BA7517", borderRadius: "2px" }}></div>
+             </div>
+          </div>
+          <div style={{ flex: 1, background: "#E6F1FB", borderRadius: "4px", padding: "4px" }}>
+             <div style={{ fontSize: "8px", color: "#185FA5" }}>Callback Queue</div>
+             <div style={{ width: "8px", height: "8px", background: "#185FA5", borderRadius: "2px", marginTop: "2px" }}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SubStepsList({ subSteps, active }) {
   return (
@@ -397,8 +445,7 @@ function BarFill({ color, active }) {
   return <div style={{ height: "100%", width: width + "%", background: color, borderRadius: "3px", transition: "width 0.8s ease" }} />;
 }
 
-const diagrams = { dns: DnsDiagram, parse: DomDiagram, js: JsDiagram, render: RenderDiagram };
-
+const diagrams = { dns: DnsDiagram, parse: DomDiagram, js: JsDiagram, eventloop: EventLoopDiagram, render: RenderDiagram };
 export default function App() {
   const [url, setUrl] = useState("https://google.com");
   const [running, setRunning] = useState(false);
